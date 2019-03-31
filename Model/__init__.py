@@ -18,7 +18,9 @@ def get_kl_vl(**kwargs):
 class Model(object):
     @classmethod
     def db_path(cls):
-        return "C:/Users/Zhengyujia/PycharmProjects/Server_for/Model/DB.sqlite"
+         path = ""                                 //需要指定一个path座位sqlite数据库的路径
+         if path == "":
+            raise Exception                       
 
     @classmethod
     def table_name(cls):
@@ -50,7 +52,7 @@ class Model(object):
         return conn
 
     @classmethod
-    def find_by(cls, **kwargs):
+    def find_by(cls, **kwargs):                                         //涉及到kwargs的都只支持一个 key-value 形式的数据库查找
         ds = []
         conn = cls.get_conn()
         for k, v in kwargs.items():
