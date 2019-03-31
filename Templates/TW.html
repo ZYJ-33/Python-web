@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>TW index</title>
+</head>
+<body>
+<input id="TW-input" type="text" placeholder="input the message"><br>
+<button id="TW-button" type="submit">submit</button>
+<br>
+<div id="TW-list"></div>
+<script>
+    var log = function (mess) {
+        console.log(mess)
+    }
+
+
+    var ele = function (str) {
+        return document.querySelector(str)
+    }
+
+    var insert = function (html) {
+        div = ele("#TW-list")
+        div.insertAdjacentHTML("beforeend", html)
+    }
+//<a href="/TW/edit?id=${id}" class="tw-but-upd">edit</a>
+    var template = function (username, tw, id) {
+        temp = `
+    <span class="tw-span" id="span-${id}" data-id = "${id}">
+       <span class="tw-user"> ${username} :</span><span class="tw-content">${tw}</span><br><button class="tw-but-del">delete</button> <button type=submit class="tw-but-upd">edit</button>
+        <button type="submit" class="tw-but-comm">comment</button><br>
+        <span class="comment"></span>
+    </span>
+    `
+        return temp
+    }
+
+
+    var ajax = function (method, path, data, callback) {
+        request = new XMLHttpRequest()
+        request.open(method, path)
+        request.setRequestHeader("Content-Type", "application/json")
+        request.onreadystatechange = function () {
+            if (request.readyState == 4 & request.status == 200) {
+                var response = request.response
+                JSON.parse(response)
+                callback(response)
+            }
+        }
+        if (data == null | method == "get")
+            request.send()
+        else {
+            data = JSON.stringify(data)
+            request.send(data)
+        }
+    }
+
+    var load_All = function () {
+        ajax('get','/TW/all',null,all_callback)
+    }
+
+    var add_callback = function (response) {
+        response = JSON.parse(response)
+        div = ele('#TW-list')
+        temp = template(response.username, response.tw, response.id)
+        div.insertAdjacentHTML("beforeend", temp)
+    }
+
+    var but_AddListen = function () {
+        but = ele("#TW-button")
+        but.addEventListener("click", function () {
+            input = ele("#TW-input")
+            value = input.value
+            d = {tw: value}
+            ajax('post', '/TW/add', d, add_callback)
+        })
+    }
+
+    var all_callback = function (response) {
+        var resp = JSON.parse(response)
+        for (i = 0; i < resp.length; i++) {
+            temp = template(resp[i].username, resp[i].tw, resp[i].id)
+            insert(temp)
+        }
+        load_allcomment()
+    }
+
+    var format = function (id) {
+        temp = `id='${id}'`
+        return temp
+    }
+
+    var del_callback = function (response) {
+        resp = JSON.parse(response)
+        log(resp)
+        var id = (resp.id).toString()
+        log(id)
+        log(typeof id)
+        element = ele('#' + id)
+        log(element)
+        element.remove()
+    }
+
+    var insert_input = function (target) {
+        tw_span = target.querySelector(".tw-content")
+        var value = tw_span.innerText
+        html = `
+            <input type="text" class="edit" value="${value}"><button type="submit" class="edit-but">submit</button><br>
+        `
+        target.insertAdjacentHTML("beforeend", html)
+    }
+
+    var click_on_div = function (event) {
+        var cls = event.target.className
+        if (cls == "tw-but-del") {
+            id = event.target.parentElement.id
+
+            d = {"id": id}
+            ajax("post", "/TW/del", d, del_callback)
+        }
+        else if (cls == "tw-but-comm") {
+            target_span = event.target.parentNode
+            target_span = target_span.querySelector(".comment")
+            insert_comm_input(target_span)
+        }
+        else if (cls == "tw-but-upd") {
+            target_span = event.target.parentNode
+            insert_input(target_span)
+        }
+        else if(cls == "edit-but")
+        {
+            id_span = event.target.parentNode
+            input = target_span.querySelector(".edit")
+            id = id_span.dataset.id
+            tw = input.value
+            d = {id:id,tw:tw}
+            ajax("post","/TW/edit",d,edit_callback)
+        }
+        else if (cls == "comm-input-but")
+        {
+            comment_span = event.target.parentNode
+            input = comment_span.querySelector(".commend_input")
+            tw_span = comment_span.parentNode
+            twid = tw_span.id
+            comment = input.value
+            d = {comment:comment,twid:twid}
+            ajax("post","/TW/comment/add",d, comment_callback)
+        }
+        else if (cls == "com-del-but")
+        {
+            comment_span = event.target.parentNode
+            id = comment_span.id
+            d = {id:id}
+            ajax("post","/TW/comment/del",d,comm_del_callback)
+        }
+    }
+
+    comm_del_callback = function(Response){
+        resp = JSON.parse(Response)
+        id = resp.id
+        id = "#"+id
+        target = ele(id)
+        target.remove()
+    }
+
+    comment_callback = function(Response){
+        resp = JSON.parse(Response)
+        insert_comments(resp)
+    }
+
+
+    var insert_comm_input = function (target) {
+        html = `
+            <input type="text" class="commend_input"><button type="submit" class="comm-input-but">submit</button><br>
+        `
+        target.insertAdjacentHTML("beforeend", html)
+    }
+
+
+    var edit_callback = function (Response) {
+        d = JSON.parse(Response)
+        log(d)
+        var id = "#span-" + d.id
+        var tw = d.tw
+        log(id)
+        log(tw)
+        target_span = document.querySelector(id)
+        log(target_span)
+        tw_span = target_span.querySelector(".tw-content")
+        tw_span.innerText = tw
+    }
+
+    var div_AddListen = function () {
+        div = ele("#TW-list")
+        div.addEventListener("click", click_on_div)
+    }
+
+    var load_allcomment = function () {
+        list = []
+        span_list = document.querySelectorAll(".tw-span")
+        for(var i =0;i<span_list.length;i++)
+        {
+            d = {id:span_list[i].id}
+            list.push(d)
+        }
+        ajax("post", "/TW/Comment/all", list, load_all_comment_callback)
+    }
+// {"span-18": [], "span-25": [], "span-26": [{"username": "zheng", "id": 10, "comment": "shuishuod"}]}
+    var load_all_comment_callback = function (Response) {
+        resp = JSON.parse(Response)
+        log(resp)
+        insert_comments(resp)
+    }
+
+    var insert_comments = function (resp) {
+     for(var key in resp)
+        {
+            comment_list = resp[key]
+            if (comment_list.length>0)
+            {
+                for(var i=0; i<comment_list.length; i++)
+                {
+                    insert_comment(key,comment_list[i])
+                }
+            }
+        }
+    }
+
+    comment_template = function(username,comment,id){
+        t = `
+            <span id="comment-${id}">${username}: ${comment}<button class="com-del-but">comment_delete</button></span><br>
+        `
+        return t
+    }
+
+    var insert_comment = function (key, comment) {
+        target = ele("#"+key)
+        target = target.querySelector(".comment")
+        t = comment_template(comment.username,comment.comment,comment.id)
+        target.insertAdjacentHTML("beforeend", t)
+    }
+
+</script>
+<script>
+
+    var _main = function () {
+        load_All()
+        but_AddListen()
+        div_AddListen()
+    }
+
+    _main()
+</script>
+</body>
+</html>

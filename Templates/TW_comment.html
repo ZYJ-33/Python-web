@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+</head>
+<body>
+{{tw}}<input type="hidden" value={{id}} id="twid">
+<div id="comment_list"></div>
+<input type="text" id="comment-input">
+<button type="submit" id="submit-but">submit</button>
+
+<script>
+    log = function (mess) {
+        console.log(mess)
+    }
+
+    ele = function (identify) {
+        return document.querySelector(identify)
+    }
+
+    ajax = function(method, path, data ,callback) {
+        r = new XMLHttpRequest()
+        log(path)
+        if (method.toLowerCase() == "get") {
+            if (data != null) {
+                path += "?"
+                for (var key in data) {
+                    path = path + key + "=" + data[key]
+                }
+                log(path)
+            }
+            log(method)
+            log(path)
+            log(r.open(method, path, true))
+        }
+        else {
+            log("in post")
+            log(r.open(method, path, true))
+            data = JSON.stringify(data)
+        }
+
+        r.setRequestHeader("Content-Type", "application/json")
+        r.onreadystatechange = function () {
+            if (r.readyState == 4 & r.status == 200) {
+                callback(r.response)
+            }
+        }
+
+        if (method.toLowerCase() == "get") {
+            r.send()
+        }
+        else {
+            r.send(data)
+        }
+    }
+
+    template = function(username,comment,id){
+        t = `
+            <span id="span-${id}">${username}: ${comment}<button class="com-del-but">delete</button></span><br>
+        `
+        return t
+    }
+
+    insert = function(http){
+        div = ele("#comment_list")
+        log(div)
+        log(http)
+        div.insertAdjacentHTML("beforeend", http)
+    }
+
+
+
+    but_AddListen = function () {
+        but = ele("#submit-but")
+        but.addEventListener("click", function () {
+            input = ele("#comment-input")
+            value = input.value
+            sign = ele("#twid")
+            id = sign.value
+            d = {comment:value, twid:id}
+            ajax("post", "/TW/comment/add", d, comment_callback)
+        })
+    }
+    //function(method, path, data ,callback){
+    comment_load_All = function () {
+        sign = ele("#twid")
+        value = sign.value
+        d = {id:value}
+        ajax('get', '/TW/Comment/all',d , comment_load_All_callback)
+    }
+
+    comment_load_All_callback = function (Response) {
+        resp = JSON.parse(Response)
+
+        for(i=0;i<resp.length;i++)
+        {
+            http = template(resp[i].username,resp[i].comment,resp[i].id)
+            insert(http)
+        }
+    }
+
+    //ajax = function(method, path, data ,callback)
+
+    ondelete_callback = function(Response){
+        resp = JSON.parse(Response)
+        target = ele("#"+resp.id)
+        target.remove()
+    }
+
+    div_AddListen_ondelete = function () {
+        div = ele('#comment_list')
+        div.addEventListener('click',function (event) {
+            if (event.target.className =="com-del-but")
+            {
+                target_span = event.target.parentNode
+                value = target_span.id
+                d = {id:value}
+                ajax("post","/TW/comment/del",d,ondelete_callback)
+            }
+        })
+    }
+
+</script>
+<script>
+    but_AddListen()
+    comment_load_All()
+    div_AddListen_ondelete()
+</script>
+</body>
+</html>
